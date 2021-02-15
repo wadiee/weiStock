@@ -309,8 +309,7 @@ public class StockController {
     @RequestMapping(value = "/debug", method = RequestMethod.GET)
     public String debug(@RequestParam(value="index", defaultValue="weiIndex") String indexName) {
 
-        this.sqldb.getStocksToEval("weiIndex"); 
-        return ReadJsonFromFile.getFilePath(indexName);
+        return this.sqldb.getStocksToEval("weiIndex").get(1);
     }
 
     @RequestMapping(value = "/recordERStockForToday", method = RequestMethod.GET)
