@@ -76,11 +76,11 @@ public class Spider {
         return sl.getZacksRating(sym);
     }
 
-    public static Map<String, Object> crawlMarketWatchRating(String url, String sym) {
+    public static Map<String, Object> crawlMarketWatchRating(String url, String sym, String curPrice) {
         SpiderLeg sl = new SpiderLeg();
         sl.getHtmlDocument(url);
 
-        return sl.getMarketWatchRating(sym);
+        return sl.getMarketWatchRating(sym, curPrice);
     }
 
 }

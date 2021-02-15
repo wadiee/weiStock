@@ -107,11 +107,11 @@ public class StockController {
 
     @RequestMapping(value = "/marketWatchRating", method = RequestMethod.GET)
     public Map<String, Object> marketWatchRating(
-            @RequestParam(value = "sym", defaultValue = "MSFT") String lookupSymbol) {
+            @RequestParam(value = "sym", defaultValue = "MSFT") String lookupSymbol, String curPrice) {
         String marketWatchRatingUrl = GlobalDef.marketWatchUrl.concat(lookupSymbol)
                 .concat(GlobalDef.marketWatchUrlAnalystestimatesSuffix);
 
-        Map<String, Object> returnMap = Spider.crawlMarketWatchRating(marketWatchRatingUrl, lookupSymbol);
+        Map<String, Object> returnMap = Spider.crawlMarketWatchRating(marketWatchRatingUrl, lookupSymbol, curPrice);
         return returnMap;
     }
 
@@ -249,7 +249,7 @@ public class StockController {
             // Adding Zacks Rating
             stockDim.put("ZackRank", this.zacksRating(stockSym));
             // Adding MarketWatch Info
-            Map<String, Object> marketWatchInfoMap = this.marketWatchRating(stockSym);
+            Map<String, Object> marketWatchInfoMap = this.marketWatchRating(stockSym, qs.getLastPrice().toString());
 
             // Only add marketwatch info if it is not null
             if (marketWatchInfoMap != null)

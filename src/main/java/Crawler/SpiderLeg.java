@@ -103,7 +103,7 @@ public class SpiderLeg
         return scanContentForZacksRating(bodyText, sym);
     }
 
-    public Map<String, Object> getMarketWatchRating(String sym) {
+    public Map<String, Object> getMarketWatchRating(String sym, String curPrice) {
 
         // Defensive coding. This method should only be used after a successful crawl.
         if(this.htmlDocument == null)
@@ -116,7 +116,7 @@ public class SpiderLeg
 
         System.out.println(bodyText);
 
-        return scanContentForMarketWatch(bodyText, sym);
+        return scanContentForMarketWatch(bodyText, sym, curPrice);
     }
 
     public List<ERWrapper> crawlYahooER(int withEPS) {
@@ -295,7 +295,7 @@ public class SpiderLeg
 
     // Input: Market Watch Stock page, Symbol of that stock
     // Output: Map of Market Watch rating for the stock, and Target Price of the stock.
-    private Map<String, Object> scanContentForMarketWatch (String content, String sym) {
+    private Map<String, Object> scanContentForMarketWatch (String content, String sym, String curPrice) {
 
         // 3 data points from market Watch.
         String marketWatchRecommendation;
@@ -368,9 +368,9 @@ public class SpiderLeg
 
 
         Map<String, Object> res =  new HashMap<String, Object>();
-        res.put("Market Watch Recommendation", marketWatchRecommendation);
-        res.put("Market Watch Target Price", targetPrice);
-        res.put("Market Watch Number of Ratings", numRating);
+        res.put("Market Watch Recommendation", marketWatchRecommendation == null ? "Hold" : marketWatchRecommendation);
+        res.put("Market Watch Target Price", targetPrice == null ? curPrice : targetPrice);
+        res.put("Market Watch Number of Ratings", numRating == null ? "0" : numRating);
 
         return res;
     }
