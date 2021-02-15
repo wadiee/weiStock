@@ -114,8 +114,6 @@ public class SpiderLeg
 
         String bodyText = this.htmlDocument.body().text();
 
-        System.out.println(bodyText);
-
         return scanContentForMarketWatch(bodyText, sym, curPrice);
     }
 

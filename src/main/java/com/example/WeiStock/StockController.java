@@ -39,7 +39,7 @@ public class StockController {
     private static StockUtils stockUtils = new StockUtils();
     private static StockTwitsReader twitsReader = new StockTwitsReader();
 
-    private final String weiIndex = "weiIndex";
+    private final String weiScore = "weiScore";
 
     private final int DaysToCrawl = 10;
 
@@ -170,17 +170,17 @@ public class StockController {
                         stockDim.put("To TP potential increase %", potentialIncreasePercent);
                         stockDim.put("Today Increase %", tempQuote.getChangePercent());
 
-                        // Creating wei Index for stock
-                        double weiIndex = 0.0;
-                        weiIndex += stockUtils.rankQuantifier((String) stockDim.get("ZackRank"));
-                        weiIndex += stockUtils.rankQuantifier(marketWatchInfoMap == null ? null
+                        // Creating wei Score for stock
+                        double weiScore = 0.0;
+                        weiScore += stockUtils.rankQuantifier((String) stockDim.get("ZackRank"));
+                        weiScore += stockUtils.rankQuantifier(marketWatchInfoMap == null ? null
                                 : (String) marketWatchInfoMap.get("Market Watch Recommendation"));
-                        weiIndex += stockDim.get("To TP potential increase %") == null ? 0.0
+                        weiScore += stockDim.get("To TP potential increase %") == null ? 0.0
                                 : Double.parseDouble(stockDim.get("To TP potential increase %").toString());
-                        weiIndex += Double.parseDouble(stockDim.get("bullPercent").toString())
+                        weiScore += Double.parseDouble(stockDim.get("bullPercent").toString())
                                 - Double.parseDouble(stockDim.get("bearPercent").toString());
 
-                        stockDim.put(this.weiIndex, weiIndex);
+                        stockDim.put(this.weiScore, weiScore);
 
                         recList.add(stockDim);
                     }
@@ -188,8 +188,8 @@ public class StockController {
             }
 
             recList.sort((o1, o2) -> {
-                double valToCompare = Double.parseDouble(o1.get(this.weiIndex).toString())
-                        - Double.parseDouble(o2.get(this.weiIndex).toString());
+                double valToCompare = Double.parseDouble(o1.get(this.weiScore).toString())
+                        - Double.parseDouble(o2.get(this.weiScore).toString());
                 if (valToCompare > 0) {
                     return -1;
                 } else if (valToCompare < 0) {
@@ -272,14 +272,14 @@ public class StockController {
             stockDim.put("Today Increase %", qs.getChangePercent());
 
             // Creating wei Index for stock
-            double weiIndex = 0.0;
-            weiIndex += stockUtils.rankQuantifier((String) stockDim.get("ZackRank"));
-            weiIndex += stockUtils.rankQuantifier((String) marketWatchInfoMap.get("Market Watch Recommendation"));
-            weiIndex += stockDim.get("To TP potential increase %") == null ? 0.0 : Double.parseDouble(stockDim.get("To TP potential increase %").toString());
+            double weiScore = 0.0;
+            weiScore += stockUtils.rankQuantifier((String) stockDim.get("ZackRank"));
+            weiScore += stockUtils.rankQuantifier((String) marketWatchInfoMap.get("Market Watch Recommendation"));
+            weiScore += stockDim.get("To TP potential increase %") == null ? 0.0 : Double.parseDouble(stockDim.get("To TP potential increase %").toString());
             double stockTwitsSentiment = Double.parseDouble(stockDim.get("bullPercent").toString()) - Double.parseDouble(stockDim.get("bearPercent").toString());
-            weiIndex += stockTwitsSentiment/10.0;
+            weiScore += stockTwitsSentiment/10.0;
 
-            stockDim.put(this.weiIndex, weiIndex);
+            stockDim.put(this.weiScore, weiScore);
         }
         return stockDim;
     }
@@ -292,8 +292,8 @@ public class StockController {
         stockList.forEach(stock -> infolist.add(this.evalStock(stock)));
 
         infolist.sort((o1, o2) -> {
-            double valToCompare = Double.parseDouble(o1.get(this.weiIndex).toString())
-                    - Double.parseDouble(o2.get(this.weiIndex).toString());
+            double valToCompare = Double.parseDouble(o1.get(this.weiScore).toString())
+                    - Double.parseDouble(o2.get(this.weiScore).toString());
             if (valToCompare > 0) {
                 return -1;
             } else if (valToCompare < 0) {
@@ -324,7 +324,7 @@ public class StockController {
 
         List<Map<String, Object>> filteredRecommendations = recommendations
                 .stream()
-                .filter(rec -> rec.get(this.weiIndex) != "Infinity")
+                .filter(rec -> rec.get(this.weiScore) != "Infinity")
                 .limit(topNInt)
                 .collect(Collectors.toList());
 
