@@ -1,61 +1,47 @@
 package com.example.WeiStock;
 
-import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.servlet.ModelAndView;
 
 import Crawler.ERWrapper;
 import Crawler.Spider;
-import Lookup.LookupStock;
-import Lookup.LookupUtils;
 import Meta.GlobalDef;
-import MongoDB.MongoConnection;
 import Quote.QuoteStock;
 import Utils.ReadJsonFromFile;
 import Utils.StockUtils;
-import Utils.WrapperReturnVal;
 import stockException.CustomGenericException;
 import stockTwits.StockTwitsReader;
 import yahoofinance.Stock;
 import yahoofinance.YahooFinance;
-import yahoofinance.quotes.stock.StockQuote;
 
 @RestController
 public class StockController {
 
-    private static LookupUtils lookupUtils = new LookupUtils();
+    @Autowired
+    private SQLDBCommunicator sqldb;
+
     private static StockUtils stockUtils = new StockUtils();
     private static StockTwitsReader twitsReader = new StockTwitsReader();
-
-    private static final String USER_AGENT = "Mozilla/5.0";
-    private final String GET_URL = "http://dev.markitondemand.com/MODApis/Api/v2/";
-    private final String FALL_BACK_GET_URL = "http://www.alphavantage.co/query?function=GLOBAL_QUOTE&apikey=0Z47696F1OH3NMAB&symbol=";
 
     private final String weiIndex = "weiIndex";
 
     private final int DaysToCrawl = 10;
-
-    // private static final MongoConnection mongoConnection = new MongoConnection();
 
     @GetMapping("/")
     public String home() {
@@ -300,7 +286,7 @@ public class StockController {
 
     @RequestMapping(value = "/eval", method = RequestMethod.GET)
     public List<Map<String,Object>> evalIndex(@RequestParam(value="index", defaultValue="weiIndex") String indexName) {
-        List<String> stockList = ReadJsonFromFile.getStockList(indexName); 
+        List<String> stockList = this.sqldb.getStocksToEval(indexName); 
         List<Map<String, Object>> infolist = new ArrayList();
         
         stockList.forEach(stock -> infolist.add(this.evalStock(stock)));
@@ -323,6 +309,7 @@ public class StockController {
     @RequestMapping(value = "/debug", method = RequestMethod.GET)
     public String debug(@RequestParam(value="index", defaultValue="weiIndex") String indexName) {
 
+        this.sqldb.getStocksToEval("weiIndex"); 
         return ReadJsonFromFile.getFilePath(indexName);
     }
 

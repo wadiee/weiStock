@@ -1,7 +1,6 @@
 package Utils;
 
 import Meta.GlobalDef;
-import Lookup.LookupUtils;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -20,7 +19,6 @@ import java.util.Map;
  */
 public class StockUtils {
 
-    private static LookupUtils lookupUtils = new LookupUtils();
     public static final JsonFactory jsonFactory = new JsonFactory();
 
     public String formatGetReq(int get_type, String sym, String baseStr) {
