@@ -10,14 +10,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import javax.mail.MessagingException;
-import javax.mail.internet.MimeMessage;
-
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import org.json.JSONObject;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -35,6 +31,7 @@ import Lookup.LookupUtils;
 import Meta.GlobalDef;
 import MongoDB.MongoConnection;
 import Quote.QuoteStock;
+import Utils.ReadJsonFromFile;
 import Utils.StockUtils;
 import Utils.WrapperReturnVal;
 import stockException.CustomGenericException;
@@ -299,6 +296,28 @@ public class StockController {
             stockDim.put(this.weiIndex, weiIndex);
         }
         return stockDim;
+    }
+
+    @RequestMapping(value = "/eval", method = RequestMethod.GET)
+    public List<Map<String,Object>> evalIndex(@RequestParam(value="index", defaultValue="weiIndex") String indexName) {
+        List<String> stockList = ReadJsonFromFile.getStockList(indexName); 
+        List<Map<String, Object>> infolist = new ArrayList();
+        
+        stockList.forEach(stock -> infolist.add(this.evalStock(stock)));
+
+        infolist.sort((o1, o2) -> {
+            double valToCompare = Double.parseDouble(o1.get(this.weiIndex).toString())
+                    - Double.parseDouble(o2.get(this.weiIndex).toString());
+            if (valToCompare > 0) {
+                return -1;
+            } else if (valToCompare < 0) {
+                return 1;
+            } else {
+                return 0;
+            }
+        });
+
+        return infolist;
     }
 
     @RequestMapping(value = "/recordERStockForToday", method = RequestMethod.GET)
