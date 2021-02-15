@@ -1,5 +1,4 @@
-{
-    "array": [
+[
         "TSLA",
         "ROKU",
         "CRSP",
@@ -46,5 +45,4 @@
         "SYRS",
         "ONVO",
         "XONE"
-    ]
-}
+]
