@@ -31,3 +31,5 @@ jobs:
         slot-name: 'production'
         publish-profile: ${{ secrets.AzureAppService_PublishProfile_7287909ca0a24cedb95bac258d599365 }}
         package: '${{ github.workspace }}/target/*.war'
+
+    - task: PublishBuildArtifacts@1
