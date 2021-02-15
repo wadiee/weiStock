@@ -115,97 +115,6 @@ public class StockController {
         return returnMap;
     }
 
-    @RequestMapping(value = "/simpleRec", method = RequestMethod.GET)
-    public List<Map<String, Object>> simpleRecommendations(
-            @RequestParam(value = "withEPS", defaultValue = "1") String withEPS) {
-        List<Map<String, Object>> recList = new ArrayList<Map<String, Object>>();
-
-        try {
-            Map<String, List<ERWrapper>> ERList = this.obtainER(withEPS);
-            for (List<ERWrapper> l : ERList.values()) {
-                if (l == null)
-                    continue;
-                for (ERWrapper erWrapper : l) {
-                    String stockSym = erWrapper.getSymbol();
-                    // Do not include StockTwits Message
-                    Thread.sleep(1000);
-                    Map<String, Object> stockDim = getStockTwitsDimensions(stockSym, "0");
-                    if (stockDim == null) {
-                        continue;
-                    } else {
-                        // Adding other attributes to this stock recommendation system.
-
-                        // Adding EPS
-                        stockDim.put("EPS", erWrapper.getEPSEstimated());
-
-                        // Adding today's date as prediction date
-                        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
-                        stockDim.put("Prediction Date", formatter.format(new Date()));
-
-                        // Adding ERDate
-                        stockDim.put("Earning Date", erWrapper.getERDate());
-
-                        // Adding Zacks Rating
-                        stockDim.put("ZackRank", this.zacksRating(stockSym));
-                        // Adding MarketWatch Info
-                        Map<String, Object> marketWatchInfoMap = this.marketWatchRating(stockSym);
-
-                        // Only add marketwatch info if it is not null
-                        if (marketWatchInfoMap != null) {
-                            stockDim.putAll(marketWatchInfoMap);
-                        }
-
-                        // Adding Stock Quote, Volume, Change percent, Target-to-Price increase %
-                        QuoteStock tempQuote = this.quote(stockSym);
-
-                        stockDim.put("Volume Today", tempQuote.getVolume());
-                        stockDim.put("Price Now", tempQuote.getLastPrice());
-                        Double potentialIncreasePercent = null;
-                        if (marketWatchInfoMap != null && marketWatchInfoMap.get("Market Watch Target Price") != null) {
-                            potentialIncreasePercent = (Double
-                                    .parseDouble((String) marketWatchInfoMap.get("Market Watch Target Price"))
-                                    - tempQuote.getLastPrice().doubleValue()) * 100.0
-                                    / tempQuote.getLastPrice().doubleValue();
-                        }
-                        stockDim.put("To TP potential increase %", potentialIncreasePercent);
-                        stockDim.put("Today Increase %", tempQuote.getChangePercent());
-
-                        // Creating wei Score for stock
-                        double weiScore = 0.0;
-                        weiScore += stockUtils.rankQuantifier((String) stockDim.get("ZackRank"));
-                        weiScore += stockUtils.rankQuantifier(marketWatchInfoMap == null ? null
-                                : (String) marketWatchInfoMap.get("Market Watch Recommendation"));
-                        weiScore += stockDim.get("To TP potential increase %") == null ? 0.0
-                                : Double.parseDouble(stockDim.get("To TP potential increase %").toString());
-                        weiScore += Double.parseDouble(stockDim.get("bullPercent").toString())
-                                - Double.parseDouble(stockDim.get("bearPercent").toString());
-
-                        stockDim.put(this.weiScore, weiScore);
-
-                        recList.add(stockDim);
-                    }
-                }
-            }
-
-            recList.sort((o1, o2) -> {
-                double valToCompare = Double.parseDouble(o1.get(this.weiScore).toString())
-                        - Double.parseDouble(o2.get(this.weiScore).toString());
-                if (valToCompare > 0) {
-                    return -1;
-                } else if (valToCompare < 0) {
-                    return 1;
-                } else {
-                    return 0;
-                }
-            });
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return recList;
-    }
-
     // @RequestMapping(value = "/sendemail", method = RequestMethod.GET)
     // public void sendEmail(@RequestParam String fromEmail, @RequestParam String
     // toEmail) {
@@ -310,35 +219,6 @@ public class StockController {
     public String debug(@RequestParam(value="index", defaultValue="weiIndex") String indexName) {
 
         return this.sqldb.getStocksToEval("weiIndex").get(1);
-    }
-
-    @RequestMapping(value = "/recordERStockForToday", method = RequestMethod.GET)
-    public void recordERStockForToday(@RequestParam(value="withEPS", defaultValue="1") String withEPS,
-                                      @RequestParam(value="topN", defaultValue="5") String topN) {
-
-        List<Map<String, Object>> recommendations = simpleRecommendations(withEPS);
-
-        System.out.println("how many stock in rec? : " + recommendations.size());
-
-        int topNInt = Integer.parseInt(topN);
-
-        List<Map<String, Object>> filteredRecommendations = recommendations
-                .stream()
-                .filter(rec -> rec.get(this.weiScore) != "Infinity")
-                .limit(topNInt)
-                .collect(Collectors.toList());
-
-        System.out.println("how many stock in insert? : " + filteredRecommendations.size());
-
-        // mongoConnection.insertIntoERStocksCollection(filteredRecommendations);
-
-    }
-
-    @RequestMapping(value = "/getERStocksForToday", method = RequestMethod.GET)
-    public void getERStockForToday(@RequestParam(value="date") String date) {
-
-        // mongoConnection.readFromERStocksCollection();
-
     }
 
     public Map<String, Object> getStockTwitsHelper(String twitSym) {
