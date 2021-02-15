@@ -320,6 +320,12 @@ public class StockController {
         return infolist;
     }
 
+    @RequestMapping(value = "/debug", method = RequestMethod.GET)
+    public String debug(@RequestParam(value="index", defaultValue="weiIndex") String indexName) {
+
+        return ReadJsonFromFile.getFilePath(indexName);
+    }
+
     @RequestMapping(value = "/recordERStockForToday", method = RequestMethod.GET)
     public void recordERStockForToday(@RequestParam(value="withEPS", defaultValue="1") String withEPS,
                                       @RequestParam(value="topN", defaultValue="5") String topN) {

@@ -18,7 +18,8 @@ public class ReadJsonFromFile {
         //JSON parser object to parse read file
         JSONParser jsonParser = new JSONParser();
         
-        String path = System.getProperty("user.dir") + "\\src\\main\\resources\\static\\" + indexName + ".json"; 
+        String path = getFilePath(indexName);
+         
         try (FileReader reader = new FileReader(path))
         {
             //Read JSON file
@@ -38,5 +39,9 @@ public class ReadJsonFromFile {
         }
 
         return stockList;
+    }
+
+    public static String getFilePath(String indexName) {
+        return System.getProperty("user.dir") + "\\src\\main\\resources\\static\\" + indexName + ".json";
     }
 }
