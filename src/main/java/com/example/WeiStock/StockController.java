@@ -1,0 +1,365 @@
+package com.example.WeiStock;
+
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
+import javax.mail.MessagingException;
+import javax.mail.internet.MimeMessage;
+
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import org.json.JSONObject;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.servlet.ModelAndView;
+
+import Crawler.ERWrapper;
+import Crawler.Spider;
+import Lookup.LookupStock;
+import Lookup.LookupUtils;
+import Meta.GlobalDef;
+import MongoDB.MongoConnection;
+import Quote.QuoteStock;
+import Utils.StockUtils;
+import Utils.WrapperReturnVal;
+import stockException.CustomGenericException;
+import stockTwits.StockTwitsReader;
+import yahoofinance.Stock;
+import yahoofinance.YahooFinance;
+import yahoofinance.quotes.stock.StockQuote;
+
+@RestController
+public class StockController {
+
+    private static LookupUtils lookupUtils = new LookupUtils();
+    private static StockUtils stockUtils = new StockUtils();
+    private static StockTwitsReader twitsReader = new StockTwitsReader();
+
+    private static final String USER_AGENT = "Mozilla/5.0";
+    private final String GET_URL = "http://dev.markitondemand.com/MODApis/Api/v2/";
+    private final String FALL_BACK_GET_URL = "http://www.alphavantage.co/query?function=GLOBAL_QUOTE&apikey=0Z47696F1OH3NMAB&symbol=";
+
+    private final String weiIndex = "weiIndex";
+
+    private final int DaysToCrawl = 10;
+
+    // private static final MongoConnection mongoConnection = new MongoConnection();
+
+    @RequestMapping(value = "/apiDoc", method = RequestMethod.GET)
+    public Map<String, String> apiDocumentation() {
+        Map<String, String> apiDoc = new HashMap<>();
+        apiDoc.put("/lookup",
+                "Looks up the Stock basic info given stock symbol from markitondemand, MSFT as default stock symbol.");
+        apiDoc.put("/quote", "Gets basic quote of the Stock from markitondemand, MSFT as default stock to quote.");
+        apiDoc.put("/er",
+                "Gets stocks with ER announcement within the next 10 days from Yahoo finance. Take in 0/1 withEPS argument.");
+        apiDoc.put("/twits", "Gets raw info about a stock from stocktwits, MSFT as default stock.");
+        apiDoc.put("/twitsdimension", "Gets Stocktwits dimension of a given stock, MSFT as default stock.");
+        apiDoc.put("/zacksRating", "Gets Zacks Rating of a give stock symbol, MSFT as default stock.");
+        apiDoc.put("/marketWatchRating", "Gets Market Watch Rating of a given stock symbol, MSFT as default stock.");
+        apiDoc.put("/simpleRec", "Most used api, gives Recommendation of stocks with ER in comming 10 days.");
+        apiDoc.put("/sendEmail", "Sends email.");
+        apiDoc.put("/getERStocksForToday", "Gets the stock recommendation for today, from backend DB.");
+        apiDoc.put("/recordERStocksForToday", "Records the stock recommendations of today, to backend DB.");
+
+        return apiDoc;
+    }
+
+    @RequestMapping(value = "/quote", method = RequestMethod.GET)
+    public QuoteStock quote(@RequestParam(value = "sym", defaultValue = "MSFT") String lookupSymbol) throws Exception {
+
+        Stock stock = YahooFinance.get(lookupSymbol);
+        QuoteStock qs = new QuoteStock(stock);
+        return qs;
+    }
+
+    @RequestMapping(value = "/er", method = RequestMethod.GET)
+    public Map<String, List<ERWrapper>> obtainER(@RequestParam(value = "withEPS", defaultValue = "0") String withEPS)
+            throws Exception {
+
+        Spider mySpider = new Spider(this.DaysToCrawl);
+        return mySpider.crawl(Integer.parseInt(withEPS));
+    }
+
+    @RequestMapping(value = "/twits", method = RequestMethod.GET)
+    public Map<String, Object> getStockTwits(@RequestParam(value = "sym", defaultValue = "MSFT") String twitSym) {
+
+        return getStockTwitsHelper(twitSym);
+    }
+
+    @RequestMapping(value = "/twitsdimension", method = RequestMethod.GET)
+    public Map<String, Object> getStockTwitsDimensions(
+            @RequestParam(value = "sym", defaultValue = "MSFT") String twitSym,
+            @RequestParam(value = "includeMessage", defaultValue = "1") String includeMessage) {
+
+        return this.getStockTwitsDimensionsHelper(twitSym, includeMessage);
+    }
+
+    @RequestMapping(value = "/zacksRating", method = RequestMethod.GET)
+    public String zacksRating(@RequestParam(value = "sym", defaultValue = "MSFT") String lookupSymbol) {
+        String zacksRatingUrl = GlobalDef.zacksRatingUrl.concat(lookupSymbol);
+
+        return Spider.crawlZacksRating(zacksRatingUrl, lookupSymbol);
+    }
+
+    @RequestMapping(value = "/marketWatchRating", method = RequestMethod.GET)
+    public Map<String, Object> marketWatchRating(
+            @RequestParam(value = "sym", defaultValue = "MSFT") String lookupSymbol) {
+        String marketWatchRatingUrl = GlobalDef.marketWatchUrl.concat(lookupSymbol)
+                .concat(GlobalDef.marketWatchUrlAnalystestimatesSuffix);
+
+        Map<String, Object> returnMap = Spider.crawlMarketWatchRating(marketWatchRatingUrl, lookupSymbol);
+        return returnMap;
+    }
+
+    @RequestMapping(value = "/simpleRec", method = RequestMethod.GET)
+    public List<Map<String, Object>> simpleRecommendations(
+            @RequestParam(value = "withEPS", defaultValue = "1") String withEPS) {
+        List<Map<String, Object>> recList = new ArrayList<Map<String, Object>>();
+
+        try {
+            Map<String, List<ERWrapper>> ERList = this.obtainER(withEPS);
+            for (List<ERWrapper> l : ERList.values()) {
+                if (l == null)
+                    continue;
+                for (ERWrapper erWrapper : l) {
+                    String stockSym = erWrapper.getSymbol();
+                    // Do not include StockTwits Message
+                    Thread.sleep(1000);
+                    Map<String, Object> stockDim = getStockTwitsDimensions(stockSym, "0");
+                    if (stockDim == null) {
+                        continue;
+                    } else {
+                        // Adding other attributes to this stock recommendation system.
+
+                        // Adding EPS
+                        stockDim.put("EPS", erWrapper.getEPSEstimated());
+
+                        // Adding today's date as prediction date
+                        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+                        stockDim.put("Prediction Date", formatter.format(new Date()));
+
+                        // Adding ERDate
+                        stockDim.put("Earning Date", erWrapper.getERDate());
+
+                        // Adding Zacks Rating
+                        stockDim.put("ZackRank", this.zacksRating(stockSym));
+                        // Adding MarketWatch Info
+                        Map<String, Object> marketWatchInfoMap = this.marketWatchRating(stockSym);
+
+                        // Only add marketwatch info if it is not null
+                        if (marketWatchInfoMap != null) {
+                            stockDim.putAll(marketWatchInfoMap);
+                        }
+
+                        // Adding Stock Quote, Volume, Change percent, Target-to-Price increase %
+                        QuoteStock tempQuote = this.quote(stockSym);
+
+                        stockDim.put("Volume Today", tempQuote.getVolume());
+                        stockDim.put("Price Now", tempQuote.getLastPrice());
+                        Double potentialIncreasePercent = null;
+                        if (marketWatchInfoMap != null && marketWatchInfoMap.get("Market Watch Target Price") != null) {
+                            potentialIncreasePercent = (Double
+                                    .parseDouble((String) marketWatchInfoMap.get("Market Watch Target Price"))
+                                    - tempQuote.getLastPrice().doubleValue()) * 100.0
+                                    / tempQuote.getLastPrice().doubleValue();
+                        }
+                        stockDim.put("To TP potential increase %", potentialIncreasePercent);
+                        stockDim.put("Today Increase %", tempQuote.getChangePercent());
+
+                        // Creating wei Index for stock
+                        double weiIndex = 0.0;
+                        weiIndex += stockUtils.rankQuantifier((String) stockDim.get("ZackRank"));
+                        weiIndex += stockUtils.rankQuantifier(marketWatchInfoMap == null ? null
+                                : (String) marketWatchInfoMap.get("Market Watch Recommendation"));
+                        weiIndex += stockDim.get("To TP potential increase %") == null ? 0.0
+                                : Double.parseDouble(stockDim.get("To TP potential increase %").toString());
+                        weiIndex += Double.parseDouble(stockDim.get("bullPercent").toString())
+                                - Double.parseDouble(stockDim.get("bearPercent").toString());
+
+                        stockDim.put(this.weiIndex, weiIndex);
+
+                        recList.add(stockDim);
+                    }
+                }
+            }
+
+            recList.sort((o1, o2) -> {
+                double valToCompare = Double.parseDouble(o1.get(this.weiIndex).toString())
+                        - Double.parseDouble(o2.get(this.weiIndex).toString());
+                if (valToCompare > 0) {
+                    return -1;
+                } else if (valToCompare < 0) {
+                    return 1;
+                } else {
+                    return 0;
+                }
+            });
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return recList;
+    }
+
+    // @RequestMapping(value = "/sendemail", method = RequestMethod.GET)
+    // public void sendEmail(@RequestParam String fromEmail, @RequestParam String
+    // toEmail) {
+    // try {
+    // Gmail gmail = GmailClass.getGmailService();
+    // MimeMessage emailToSend = gmailClass.createEmail(toEmail, fromEmail,
+    // "testyo", "hey");
+    // gmailClass.sendMessage(gmail, "wei.zeng1993@gmail.com", emailToSend);
+
+    // System.out.println("/sendemail sent from userID wei.zeng1993 with message: "
+    // + emailToSend.toString() + "\n");
+    // } catch (MessagingException | IOException e) {
+    // e.printStackTrace();
+    // }
+    // }
+
+    @RequestMapping(value = "/evalStock", method = RequestMethod.GET)
+    public Map<String, Object> evalStock(@RequestParam(value = "sym", defaultValue = "MSFT") String stockSym) {
+
+        Map<String, Object> stockDim = getStockTwitsDimensions(stockSym, "0");
+
+        QuoteStock qs = QuoteStock.EmptyInitializer();
+        try {
+            qs = this.quote(stockSym);
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+        if (stockDim != null)
+        {
+            // Adding other attributes to this stock recommendation system.
+
+            // Adding EPS
+            stockDim.put("EPS", qs.getEpsEstimatedCurrentYearalYield());
+
+            // Adding today's date as prediction date
+            SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+            stockDim.put("Prediction Date", formatter.format(new Date()));
+
+            // Adding Zacks Rating
+            stockDim.put("ZackRank", this.zacksRating(stockSym));
+            // Adding MarketWatch Info
+            Map<String, Object> marketWatchInfoMap = this.marketWatchRating(stockSym);
+
+            // Only add marketwatch info if it is not null
+            if (marketWatchInfoMap != null)
+            {
+                stockDim.putAll(marketWatchInfoMap);
+            }
+
+            // Adding Stock Quote, Volume, Change percent, Target-to-Price increase %
+
+            stockDim.put("Volume Today", qs.getVolume());
+            stockDim.put("Price Now", qs.getLastPrice());
+            stockDim.put("Target Price", (Double.parseDouble((String)marketWatchInfoMap.get("Market Watch Target Price"))));
+            
+            Double potentialIncreasePercent = null;
+            if (marketWatchInfoMap.get("Market Watch Target Price") != null)
+            {
+                potentialIncreasePercent = (Double.parseDouble((String)marketWatchInfoMap.get("Market Watch Target Price")) - qs.getLastPrice().doubleValue())*100.0/qs.getLastPrice().doubleValue();
+            }
+            stockDim.put("To TP potential increase %", potentialIncreasePercent);
+            stockDim.put("Today Increase %", qs.getChangePercent());
+
+            // Creating wei Index for stock
+            double weiIndex = 0.0;
+            weiIndex += stockUtils.rankQuantifier((String) stockDim.get("ZackRank"));
+            weiIndex += stockUtils.rankQuantifier((String) marketWatchInfoMap.get("Market Watch Recommendation"));
+            weiIndex += stockDim.get("To TP potential increase %") == null ? 0.0 : Double.parseDouble(stockDim.get("To TP potential increase %").toString());
+            double stockTwitsSentiment = Double.parseDouble(stockDim.get("bullPercent").toString()) - Double.parseDouble(stockDim.get("bearPercent").toString());
+            weiIndex += stockTwitsSentiment/10.0;
+
+            stockDim.put(this.weiIndex, weiIndex);
+        }
+        return stockDim;
+    }
+
+    @RequestMapping(value = "/recordERStockForToday", method = RequestMethod.GET)
+    public void recordERStockForToday(@RequestParam(value="withEPS", defaultValue="1") String withEPS,
+                                      @RequestParam(value="topN", defaultValue="5") String topN) {
+
+        List<Map<String, Object>> recommendations = simpleRecommendations(withEPS);
+
+        System.out.println("how many stock in rec? : " + recommendations.size());
+
+        int topNInt = Integer.parseInt(topN);
+
+        List<Map<String, Object>> filteredRecommendations = recommendations
+                .stream()
+                .filter(rec -> rec.get(this.weiIndex) != "Infinity")
+                .limit(topNInt)
+                .collect(Collectors.toList());
+
+        System.out.println("how many stock in insert? : " + filteredRecommendations.size());
+
+        // mongoConnection.insertIntoERStocksCollection(filteredRecommendations);
+
+    }
+
+    @RequestMapping(value = "/getERStocksForToday", method = RequestMethod.GET)
+    public void getERStockForToday(@RequestParam(value="date") String date) {
+
+        // mongoConnection.readFromERStocksCollection();
+
+    }
+
+    public Map<String, Object> getStockTwitsHelper(String twitSym) {
+
+        JsonParser jsonTwitsParser = twitsReader.readFromStockTwits(twitSym);
+
+        return stockUtils.jsonParserToMap(jsonTwitsParser);
+
+    }
+
+    public Map<String, Object> getStockTwitsDimensionsHelper(String twitSym, String includeMessage) {
+
+        boolean includeMessageBool = Integer.parseInt(includeMessage) == 1;
+        Map<String, Object> rawTwitsJson  = this.getStockTwitsHelper(twitSym);
+
+        try {
+            return twitsReader.rawTwitsToDimensional(rawTwitsJson, includeMessageBool);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        System.out.println("/twitsDimensions had problem forming dimensions, returned raw JSON data \n");
+        return rawTwitsJson;
+    }
+
+    @ExceptionHandler(CustomGenericException.class)
+    public ModelAndView handleCustomException(CustomGenericException ex) {
+
+        ModelAndView model = new ModelAndView("error/generic_error");
+        model.addObject("exception", ex);
+        return model;
+
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ModelAndView handleAllException(Exception ex) {
+
+        ModelAndView model = new ModelAndView("error/exception_error");
+        return model;
+
+    }
+}
