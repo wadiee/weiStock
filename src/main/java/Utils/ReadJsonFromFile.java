@@ -35,7 +35,7 @@ public class ReadJsonFromFile {
     }
 
     public static String getFilePath(String indexName) {
-        String path = "classpath:\\static\\" + indexName + ".json";
+        String path = "classpath:\\StaticFiles\\" + indexName + ".json";
         return path;
     }
 }
