@@ -11,6 +11,7 @@ import java.util.List;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.util.ResourceUtils;
 
 public class ReadJsonFromFile {
@@ -19,7 +20,8 @@ public class ReadJsonFromFile {
         List<String> stockList = new ArrayList<String>();
 
         try {
-            File file = ResourceUtils.getFile(ReadJsonFromFile.getFilePath(indexName));
+            //File file = ResourceUtils.getFile(ReadJsonFromFile.getFilePath(indexName));
+            File file = new ClassPathResource("StaticFiles/" + indexName + ".json").getFile();
             InputStream in = new FileInputStream(file);
 
             ObjectMapper mapper = new ObjectMapper();
