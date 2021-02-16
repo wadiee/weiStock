@@ -274,17 +274,16 @@ public class SpiderLeg
 
 
         String ratingsExpression = "1-Strong Buy|2-Buy|3-Hold|4-Sell|5-Strong Sell";
-
-        System.out.println(ratingsExpression);
+        String zacksRating;
 
         Pattern ratingsPattern = Pattern.compile(ratingsExpression);
         Matcher ratingsMatcher = ratingsPattern.matcher(content);
         if (!ratingsMatcher.find()) {
-            return null; // Did not find any rating, this is terribly wrong.
+            zacksRating = "Hold"; // If we don't find zacksRating rec, then just say Hold
+        } else {
+            String rank = ratingsMatcher.group().split("-")[0];
+            zacksRating = GlobalDef.zacksRankMap.get(rank);
         }
-
-        String rank = ratingsMatcher.group().split("-")[0];
-        String zacksRating = GlobalDef.zacksRankMap.get(rank);
         
         // ****
         // Get Target Price from ZackRatings
