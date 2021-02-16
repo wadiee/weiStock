@@ -25,13 +25,33 @@ public class StockTwitsReader {
         return stockUtils.urlStringToJsonParser(urlToGetFrom);
     }
 
-    public Map<String, Object> rawTwitsToDimensional (Map<String, Object> inputMap, boolean includeMessage) throws Exception {
+    public Map<String, Object> rawTwitsToDimensional (Map<String, Object> inputMap, String twitSym, boolean includeMessage) {
 
         Map<String, Object> twitDimensionsMap = new LinkedHashMap<>();
 
+
+        if (inputMap == null) {
+            
+            // shit hit the fence, prematurally return
+            twitDimensionsMap.put("stockID", 0);
+            twitDimensionsMap.put("stockSymbol", twitSym);
+            twitDimensionsMap.put("bullPercent", 0.0);
+            twitDimensionsMap.put("bearPercent", 0.0);
+
+            return twitDimensionsMap;
+        }
+
         Map<String,Integer> responseMap = (Map<String,Integer>) inputMap.get("response");
+        
         if (!responseMap.containsKey("status") || responseMap.get("status") != 200) {
-            throw new Exception("StockTwits Json returned with status code other than 200 \n");
+            
+            // shit hit the fence, prematurally return
+            twitDimensionsMap.put("stockID", 0);
+            twitDimensionsMap.put("stockSymbol", twitSym);
+            twitDimensionsMap.put("bullPercent", 0.0);
+            twitDimensionsMap.put("bearPercent", 0.0);
+
+            return twitDimensionsMap;
         }
 
         Map<String,Map> symbolMap = (Map<String,Map>) inputMap.get("symbol");

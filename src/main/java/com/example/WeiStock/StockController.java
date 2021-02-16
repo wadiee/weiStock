@@ -236,8 +236,12 @@ public class StockController {
     public Map<String, Object> getStockTwitsHelper(String twitSym) {
 
         JsonParser jsonTwitsParser = twitsReader.readFromStockTwits(twitSym);
-
-        return stockUtils.jsonParserToMap(jsonTwitsParser);
+        if (jsonTwitsParser == null)
+        {
+            return null;
+        } else {
+            return stockUtils.jsonParserToMap(jsonTwitsParser);
+        }
 
     }
 
@@ -246,13 +250,8 @@ public class StockController {
         boolean includeMessageBool = Integer.parseInt(includeMessage) == 1;
         Map<String, Object> rawTwitsJson  = this.getStockTwitsHelper(twitSym);
 
-        try {
-            return twitsReader.rawTwitsToDimensional(rawTwitsJson, includeMessageBool);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        System.out.println("/twitsDimensions had problem forming dimensions, returned raw JSON data \n");
-        return rawTwitsJson;
+        return twitsReader.rawTwitsToDimensional(rawTwitsJson, twitSym, includeMessageBool);
+
     }
 
     @ExceptionHandler(CustomGenericException.class)
