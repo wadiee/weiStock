@@ -99,15 +99,19 @@ public class StockController {
     }
 
     @RequestMapping(value = "/zacksRating", method = RequestMethod.GET)
-    public String zacksRating(@RequestParam(value = "sym", defaultValue = "MSFT") String lookupSymbol) {
-        String zacksRatingUrl = GlobalDef.zacksRatingUrl.concat(lookupSymbol);
+    public Map<String, Object> zacksRating(
+        @RequestParam(value = "sym", defaultValue = "MSFT") String lookupSymbol,
+        @RequestParam(value = "curPrice", defaultValue = "-1") String curPrice) {
 
-        return Spider.crawlZacksRating(zacksRatingUrl, lookupSymbol);
+        String zacksRatingUrl = GlobalDef.zacksRatingUrl.concat(lookupSymbol).concat(GlobalDef.brokerageRecSuffix);
+
+        return Spider.crawlZacksRating(zacksRatingUrl, lookupSymbol, curPrice);
     }
 
     @RequestMapping(value = "/marketWatchRating", method = RequestMethod.GET)
     public Map<String, Object> marketWatchRating(
-            @RequestParam(value = "sym", defaultValue = "MSFT") String lookupSymbol, String curPrice) {
+            @RequestParam(value = "sym", defaultValue = "MSFT") String lookupSymbol, 
+            @RequestParam(value = "curPrice", defaultValue = "-1") String curPrice) {
         String marketWatchRatingUrl = GlobalDef.marketWatchUrl.concat(lookupSymbol)
                 .concat(GlobalDef.marketWatchUrlAnalystestimatesSuffix);
 
@@ -156,7 +160,14 @@ public class StockController {
             stockDim.put("Prediction Date", formatter.format(new Date()));
 
             // Adding Zacks Rating
-            stockDim.put("ZackRank", this.zacksRating(stockSym));
+            Map<String, Object> zacksRatingInfoMap = this.zacksRating(stockSym, qs.getLastPrice().toString());
+
+            // Only add zacks rating info if it is not null
+            if (zacksRatingInfoMap != null)
+            {
+                stockDim.putAll(zacksRatingInfoMap);
+            }
+
             // Adding MarketWatch Info
             Map<String, Object> marketWatchInfoMap = this.marketWatchRating(stockSym, qs.getLastPrice().toString());
 
@@ -170,19 +181,20 @@ public class StockController {
 
             stockDim.put("Volume Today", qs.getVolume());
             stockDim.put("Price Now", qs.getLastPrice());
-            stockDim.put("Target Price", (Double.parseDouble((String)marketWatchInfoMap.get("Market Watch Target Price"))));
+            stockDim.put("ZacksRating Target Price", (Double.parseDouble((String)zacksRatingInfoMap.get("ZacksRating Target Price"))));
+            stockDim.put("MarketWatch Target Price", (Double.parseDouble((String)marketWatchInfoMap.get("Market Watch Target Price"))));
             
             Double potentialIncreasePercent = null;
-            if (marketWatchInfoMap.get("Market Watch Target Price") != null)
+            if (stockDim.get("ZacksRating Target Price") != null)
             {
-                potentialIncreasePercent = (Double.parseDouble((String)marketWatchInfoMap.get("Market Watch Target Price")) - qs.getLastPrice().doubleValue())*100.0/qs.getLastPrice().doubleValue();
+                potentialIncreasePercent = ((Double)stockDim.get("ZacksRating Target Price") - qs.getLastPrice().doubleValue())*100.0/qs.getLastPrice().doubleValue();
             }
             stockDim.put("To TP potential increase %", potentialIncreasePercent);
             stockDim.put("Today Increase %", qs.getChangePercent());
 
             // Creating wei Index for stock
             double weiScore = 0.0;
-            weiScore += stockUtils.rankQuantifier((String) stockDim.get("ZackRank"));
+            weiScore += stockUtils.rankQuantifier((String) stockDim.get("ZacksRating Recommendation"));
             weiScore += stockUtils.rankQuantifier((String) marketWatchInfoMap.get("Market Watch Recommendation"));
             weiScore += stockDim.get("To TP potential increase %") == null ? 0.0 : Double.parseDouble(stockDim.get("To TP potential increase %").toString());
             double stockTwitsSentiment = Double.parseDouble(stockDim.get("bullPercent").toString()) - Double.parseDouble(stockDim.get("bearPercent").toString());

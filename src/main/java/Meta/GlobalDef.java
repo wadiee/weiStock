@@ -9,7 +9,8 @@ public class GlobalDef {
     public static final int LOOKUP = 1;
     public static final int QUOTE = 2;
 
-    public static final String zacksRatingUrl = "https://www.zacks.com/stock/quote/";
+    public static final String zacksRatingUrl = "https://www.zacks.com/stock/research/";
+    public static final String brokerageRecSuffix = "/brokerage-recommendations";
     public static final String zacksRankPrefix = "rankrect_";
     public static HashMap<String, String> zacksRankMap;
     static {

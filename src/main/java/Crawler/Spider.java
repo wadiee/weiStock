@@ -69,11 +69,11 @@ public class Spider {
 
     }
 
-    public static String crawlZacksRating(String url, String sym) {
+    public static Map<String, Object> crawlZacksRating(String url, String sym, String curPrice) {
         SpiderLeg sl = new SpiderLeg();
         sl.getHtmlDocument(url);
 
-        return sl.getZacksRating(sym);
+        return sl.getZacksRating(sym, curPrice);
     }
 
     public static Map<String, Object> crawlMarketWatchRating(String url, String sym, String curPrice) {

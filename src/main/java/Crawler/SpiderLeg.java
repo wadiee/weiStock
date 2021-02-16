@@ -89,7 +89,7 @@ public class SpiderLeg
         }
     }
 
-    public String getZacksRating(String sym) {
+    public Map<String, Object> getZacksRating(String sym, String curPrice) {
 
         // Defensive coding. This method should only be used after a successful crawl.
         if(this.htmlDocument == null)
@@ -100,7 +100,7 @@ public class SpiderLeg
 
         String bodyText = this.htmlDocument.body().text();
 
-        return scanContentForZacksRating(bodyText, sym);
+        return scanContentForZacksRating(bodyText, sym, curPrice);
     }
 
     public Map<String, Object> getMarketWatchRating(String sym, String curPrice) {
@@ -270,9 +270,7 @@ public class SpiderLeg
 
     }
 
-    // Input: Zacks Stock page, Symbol of that stock
-    // Output: Zacks rating for the stock.
-    private String scanContentForZacksRating (String content, String sym) {
+    private Map<String, Object> scanContentForZacksRating (String content, String sym, String curPrice) {
 
 
         String ratingsExpression = "1-Strong Buy|2-Buy|3-Hold|4-Sell|5-Strong Sell";
@@ -286,9 +284,34 @@ public class SpiderLeg
         }
 
         String rank = ratingsMatcher.group().split("-")[0];
-        System.out.println(rank);
+        String zacksRating = GlobalDef.zacksRankMap.get(rank);
+        
+        // ****
+        // Get Target Price from ZackRatings
+        String targetPriceString = "Average Target Price";
+        String targetPrice;
+        int targetPriceIdentifierIndex = content.lastIndexOf(targetPriceString);
+        if (targetPriceIdentifierIndex < 0) {
+            // Did not find Average target price
+            targetPrice = null;
+        } else {
+            String targetPriceExpression = "\\d+\\.\\d+";
 
-        return GlobalDef.zacksRankMap.get(rank);
+            Pattern targetPricePattern = Pattern.compile(targetPriceExpression);
+            Matcher targetPriceMatcher = targetPricePattern.matcher(content.substring(targetPriceIdentifierIndex + targetPriceString.length()));
+            if (!targetPriceMatcher.find()) {
+                targetPrice = null; // Did not find any target price.
+            } else {
+                targetPrice = targetPriceMatcher.group().trim();
+            }
+        }
+        // ***
+
+        Map<String, Object> res =  new HashMap<String, Object>();
+        res.put("ZacksRating Recommendation", zacksRating == null ? "Hold" : zacksRating);
+        res.put("ZacksRating Target Price", targetPrice == null ? curPrice : targetPrice);
+
+        return res;
     }
 
     // Input: Market Watch Stock page, Symbol of that stock
