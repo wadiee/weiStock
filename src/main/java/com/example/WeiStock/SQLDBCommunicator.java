@@ -36,8 +36,24 @@ public class SQLDBCommunicator {
 
         String curDateStr = LocalDate.now().toString();
 
-        int retVal = template.update(INSERT_QUERY, fundName, stockSym, curDateStr);
+        int retVal = 0;
+        if (!stockExistsByFundNameAndStockSym(fundName, stockSym)) {
+            retVal = template.update(INSERT_QUERY, fundName, stockSym, curDateStr);
+        }
         return retVal;
+    }
+
+    private Boolean stockExistsByFundNameAndStockSym(String fundName, String stockSym) {
+
+        String curDateStr = LocalDate.now().toString();
+
+        String query = "select count(*) as ct from funds where fundName = '" + fundName + "' AND date ='" + curDateStr + "' AND StockSym ='" + stockSym + "'";
+
+        int res = this.template.query(
+            query,
+            (rs, rowNum) -> rs.getInt("ct")).get(0);
+
+        return res > 0;
     }
 }
 
