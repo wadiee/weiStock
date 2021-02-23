@@ -2,15 +2,17 @@ package com.example.WeiStock;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.core.JsonParser;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,9 +25,7 @@ import Crawler.ERWrapper;
 import Crawler.Spider;
 import Meta.GlobalDef;
 import Meta.WeiIndexStock;
-import Meta.WeiIndexStocks;
 import Quote.QuoteStock;
-import Utils.ReadJsonFromFile;
 import Utils.StockUtils;
 import stockException.CustomGenericException;
 import stockTwits.StockTwitsReader;
@@ -33,6 +33,7 @@ import yahoofinance.Stock;
 import yahoofinance.YahooFinance;
 
 @RestController
+@Component
 public class StockController {
 
     @Autowired
@@ -231,11 +232,21 @@ public class StockController {
 
     @RequestMapping(value = "/debug", method = RequestMethod.GET)
     public String debug(@RequestParam(value="index", defaultValue="weiIndex") String indexName) {
-        this.insertToStockTable(indexName);
+        this.updateStockTable(indexName);
         return "yo";
     }
 
-    private void insertToStockTable(String indexName) {
+    @Scheduled(fixedDelay = 1000 * 60 * 60 * 2)
+    public void updateFundDBWithStockHoldings() {
+
+        updateStockTable(GlobalDef.weiIndexName);
+        System.out.println(
+            "Updated Funds table, index name: " + GlobalDef.weiIndexName + 
+            " at " + Calendar.getInstance().getTime());
+
+    }
+
+    private void updateStockTable(String indexName) {
         switch (indexName.toLowerCase()){
             case GlobalDef.weiIndexName:
                 for (WeiIndexStock stock : WeiIndexStock.values()) {
