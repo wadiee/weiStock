@@ -6,8 +6,6 @@ import java.util.HashMap;
  * Created by Wade on 7/19/16.
  */
 public class GlobalDef {
-    public static final int LOOKUP = 1;
-    public static final int QUOTE = 2;
 
     public static final String zacksRatingUrl = "https://www.zacks.com/stock/research/";
     public static final String brokerageRecSuffix = "/brokerage-recommendations";
@@ -24,4 +22,8 @@ public class GlobalDef {
 
     public static final String marketWatchUrl = "http://www.marketwatch.com/investing/stock/";
     public static final String marketWatchUrlAnalystestimatesSuffix = "/analystestimates";
+
+    public static final String weiIndexName = "weiindex";
+    public static final String arkkIndexName = "arkk";
+    public static final String nasdaqIndexName = "nasdaq";
 }

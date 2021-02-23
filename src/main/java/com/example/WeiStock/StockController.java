@@ -22,6 +22,8 @@ import org.springframework.web.servlet.ModelAndView;
 import Crawler.ERWrapper;
 import Crawler.Spider;
 import Meta.GlobalDef;
+import Meta.WeiIndexStock;
+import Meta.WeiIndexStocks;
 import Quote.QuoteStock;
 import Utils.ReadJsonFromFile;
 import Utils.StockUtils;
@@ -229,8 +231,22 @@ public class StockController {
 
     @RequestMapping(value = "/debug", method = RequestMethod.GET)
     public String debug(@RequestParam(value="index", defaultValue="weiIndex") String indexName) {
+        this.insertToStockTable(indexName);
+        return "yo";
+    }
 
-        return this.sqldb.getStocksToEval("weiIndex").get(1);
+    private void insertToStockTable(String indexName) {
+        switch (indexName.toLowerCase()){
+            case GlobalDef.weiIndexName:
+                for (WeiIndexStock stock : WeiIndexStock.values()) {
+                    this.sqldb.insertToStockTable(GlobalDef.weiIndexName, stock.toString());
+                }
+                return;
+            case GlobalDef.arkkIndexName:
+                break;
+            default:
+                return;
+        }
     }
 
     public Map<String, Object> getStockTwitsHelper(String twitSym) {
