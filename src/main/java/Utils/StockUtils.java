@@ -21,39 +21,6 @@ public class StockUtils {
 
     public static final JsonFactory jsonFactory = new JsonFactory();
 
-    public String formatGetReq(int get_type, String sym, String baseStr) {
-
-        String req_url = baseStr;
-
-        switch (get_type) {
-            case GlobalDef.LOOKUP:
-                req_url = req_url.concat("Lookup/");
-                break;
-            case GlobalDef.QUOTE:
-                req_url = req_url.concat("Quote/");
-                break;
-            default:
-                req_url = req_url.concat("Lookup/");
-                break;
-        }
-
-        req_url = req_url.concat("jsonp?");
-
-        switch (get_type) {
-            case GlobalDef.LOOKUP:
-                req_url = req_url.concat("input=" + sym);
-                break;
-            case GlobalDef.QUOTE:
-                req_url = req_url.concat("symbol=" + sym);
-                break;
-            default:
-                req_url = req_url.concat("input=" + sym);
-                break;
-        }
-
-        return req_url;
-    }
-
     public String urlStringToresponseStr(String input_url) throws Exception {
         URL obj = new URL(input_url);
         HttpURLConnection con = (HttpURLConnection) obj.openConnection();
