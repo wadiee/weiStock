@@ -117,6 +117,21 @@ public class SpiderLeg
         return scanContentForMarketWatch(bodyText, sym, curPrice);
     }
 
+    public List<String> getArkHoldings(String indexName) {
+
+        if (this.htmlDocument == null)
+        {
+            System.out.println("ERROR! Call getHtmlDocument() before performing analysis on the document");
+            return null;
+        }
+
+        String bodyText = this.htmlDocument.body().text();
+
+        System.out.println(bodyText);
+
+        return null;
+    }
+
     public List<ERWrapper> crawlYahooER(int withEPS) {
 
         this.withEPS = withEPS;

@@ -230,10 +230,10 @@ public class StockController {
         return infolist;
     }
 
-    @RequestMapping(value = "/debug", method = RequestMethod.GET)
+    @RequestMapping(value = "/forceRefreshIndexTable", method = RequestMethod.GET)
     public String debug(@RequestParam(value="index", defaultValue="weiIndex") String indexName) {
         this.updateStockTable(indexName);
-        return "yo";
+        return "Index " + indexName + " successfully updated in Funds table.";
     }
 
     @Scheduled(fixedDelay = 1000 * 60 * 60 * 2)
@@ -247,17 +247,25 @@ public class StockController {
     }
 
     private void updateStockTable(String indexName) {
+        List<String> stockList = new ArrayList<>();
+        
         switch (indexName.toLowerCase()){
             case GlobalDef.weiIndexName:
                 for (WeiIndexStock stock : WeiIndexStock.values()) {
-                    this.sqldb.insertToStockTable(GlobalDef.weiIndexName, stock.toString());
+                    stockList.add(stock.toString());
                 }
-                return;
+                break;
             case GlobalDef.arkkIndexName:
+                String arkkHoldingsUrl = GlobalDef.arkFundingUrl.concat(indexName)
+                    .concat(GlobalDef.arkFundingUrlHoldingSuffix);
+
+                stockList = Spider.crawlArkHoldings(arkkHoldingsUrl, indexName);
                 break;
             default:
-                return;
+                break;
         }
+    
+        for (String st : stockList) this.sqldb.insertToStockTable(indexName, st);
     }
 
     public Map<String, Object> getStockTwitsHelper(String twitSym) {

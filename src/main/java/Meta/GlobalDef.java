@@ -22,8 +22,11 @@ public class GlobalDef {
 
     public static final String marketWatchUrl = "http://www.marketwatch.com/investing/stock/";
     public static final String marketWatchUrlAnalystestimatesSuffix = "/analystestimates";
+    public static final String arkFundingUrl = "https://ark-funds.com/";
+    public static final String arkFundingUrlHoldingSuffix = "#holdings";
 
     public static final String weiIndexName = "weiindex";
     public static final String arkkIndexName = "arkk";
+    public static final String arkwIndexName = "arkw";
     public static final String nasdaqIndexName = "nasdaq";
 }

@@ -7,5 +7,6 @@ public enum WeiIndexStock
     XPEV,
     TSLA,
     NIO,
-    TSM
+    TSM,
+    BIDU
 }

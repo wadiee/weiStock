@@ -83,4 +83,11 @@ public class Spider {
         return sl.getMarketWatchRating(sym, curPrice);
     }
 
+    public static List<String> crawlArkHoldings(String url, String indexName) {
+        SpiderLeg sl = new SpiderLeg();
+        sl.getHtmlDocument(url);
+
+        return sl.getArkHoldings(indexName);
+    }
+
 }
